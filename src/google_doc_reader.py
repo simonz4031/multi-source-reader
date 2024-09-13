@@ -14,8 +14,8 @@ class GoogleDocReader:
         self.docs_service = None
         self.sheets_service = None
         try:
-            credentials_path = os.path.join(os.path.dirname(__file__), '..', 'google-credentials.json')
-            token_path = os.path.join(os.path.dirname(__file__), '..', 'token.pickle')
+            credentials_path = self._find_credentials_file()
+            token_path = os.path.join(os.path.dirname(credentials_path), 'token.pickle')
             
             if not os.path.exists(credentials_path):
                 raise FileNotFoundError(f"Credentials file not found at {credentials_path}")
@@ -39,7 +39,7 @@ class GoogleDocReader:
             self.sheets_service = build('sheets', 'v4', credentials=credentials)
         except FileNotFoundError as e:
             print(f"Error: {e}")
-            print("Please ensure you have placed the google-credentials.json file in the project root directory.")
+            print("Please ensure you have placed the google-credentials.json file in the current directory or home directory.")
         except json.JSONDecodeError:
             print("Error: The google-credentials.json file is not a valid JSON file.")
         except MalformedError as e:
@@ -48,6 +48,16 @@ class GoogleDocReader:
             print("Please check that it contains the correct information for either a Service Account or OAuth 2.0 Client ID.")
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
+
+    def _find_credentials_file(self):
+        # Check current directory
+        if os.path.exists('google-credentials.json'):
+            return 'google-credentials.json'
+        # Check home directory
+        home_creds = os.path.expanduser('~/google-credentials.json')
+        if os.path.exists(home_creds):
+            return home_creds
+        raise FileNotFoundError("google-credentials.json not found in current or home directory")
 
     def _print_nested_keys(self, data, prefix=''):
         if isinstance(data, dict):

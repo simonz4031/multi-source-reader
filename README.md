@@ -12,13 +12,8 @@ This console Python program allows you to read information from various sources,
    conda activate multi-source-reader
    ```
 
-3. Install the required packages:
-   ```
-   pip install -r requirements.txt
-   ```
-
-4. Set up the necessary credentials:
-   - Create a `.env` file in the project root with the following content:
+3. Set up the necessary credentials:
+   - Create a `.env` file in either the current directory or your home directory with the following content:
      ```
      GITHUB_TOKEN=your_github_token
      GITHUB_REPO_OWNER=your_github_username_or_org
@@ -27,35 +22,34 @@ This console Python program allows you to read information from various sources,
      JIRA_EMAIL=your_jira_email
      JIRA_TOKEN=your_jira_api_token
      ```
-   - Place your Google service account JSON file in the project root as `google-credentials.json`.
+   - Place your Google service account JSON file as `google-credentials.json` in either the current directory or your home directory.
 
-## Usage
+## Installation
 
-Run the program using one of the following commands:
+After setting up your environment and credentials, install the package:
 
-1. GitHub Pull Request:
-   ```
-   python src/main.py --github "PR Title"
-   ```
-   or
-   ```
-   python src/main.py --github "https://github.com/owner/repo/pull/123"
-   ```
+```
+python src/main.py --github "PR Title"
+```
+or
+```
+python src/main.py --github "https://github.com/owner/repo/pull/123"
+```
 
 2. Google Doc:
-   ```
-   python src/main.py --google "https://docs.google.com/document/d/your-doc-id/edit"
-   ```
+```
+python src/main.py --google "https://docs.google.com/document/d/your-doc-id/edit"
+```
 
 3. Google Sheet:
-   ```
-   python src/main.py --google "https://docs.google.com/spreadsheets/d/your-sheet-id/edit"
-   ```
+```
+python src/main.py --google "https://docs.google.com/spreadsheets/d/your-sheet-id/edit"
+```
 
 4. Jira Ticket:
-   ```
-   python src/main.py --jira "PROJ-123"
-   ```
+```
+python src/main.py --jira "PROJ-123"
+```
 
 ## Running Tests
 

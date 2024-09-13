@@ -1,11 +1,25 @@
 import argparse
 import sys
 import json
-from github_pr_reader import GitHubPRReader
-from google_doc_reader import GoogleDocReader
-from jira_ticket_reader import JiraTicketReader
+import os
+from dotenv import load_dotenv
+from .github_pr_reader import GitHubPRReader
+from .google_doc_reader import GoogleDocReader
+from .jira_ticket_reader import JiraTicketReader
+
+def load_environment():
+    # Try to load .env from the current directory
+    if os.path.exists('.env'):
+        load_dotenv()
+    # If not found, try to load from the home directory
+    elif os.path.exists(os.path.expanduser('~/.env')):
+        load_dotenv(os.path.expanduser('~/.env'))
+    else:
+        print("Warning: .env file not found in current or home directory.", file=sys.stderr)
 
 def main():
+    load_environment()
+
     parser = argparse.ArgumentParser(description='Read information from various sources')
     parser.add_argument('--github', help='GitHub PR title or URL')
     parser.add_argument('--google', help='Google Doc/Sheet URL')
