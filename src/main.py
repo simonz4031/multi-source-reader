@@ -3,9 +3,9 @@ import sys
 import json
 import os
 from dotenv import load_dotenv
-from .github_pr_reader import GitHubPRReader
-from .google_doc_reader import GoogleDocReader
-from .jira_ticket_reader import JiraTicketReader
+from src.github_pr_reader import GitHubPRReader
+from src.google_doc_reader import GoogleDocReader
+from src.jira_ticket_reader import JiraAndConfluenceReader
 
 def load_environment():
     # Try to load .env from the current directory
@@ -21,14 +21,41 @@ def main():
     load_environment()
 
     parser = argparse.ArgumentParser(description='Read information from various sources')
-    parser.add_argument('--github', help='GitHub PR title or URL')
-    parser.add_argument('--google', help='Google Doc/Sheet URL')
-    parser.add_argument('--jira', help='Jira ticket key')
+    parser.add_argument('-g', '--github', help='GitHub PR title or URL')
+    parser.add_argument('-d', '--google', help='Google Doc/Sheet URL')
+    parser.add_argument('-j', '--jira', help='Jira ticket key')
+    parser.add_argument('-c', '--confluence', help='Confluence page URL')
     parser.add_argument('--debug', action='store_true', help='Enable debug output')
 
     args = parser.parse_args()
 
-    if args.github:
+    # Enable debug mode by default for now
+    args.debug = True
+
+    if args.confluence:
+        debug_print(f"Attempting to read Confluence page: {args.confluence}", args.debug)
+        reader = JiraAndConfluenceReader()
+        
+        # Check Confluence connection
+        connection_status = reader.check_confluence_connection()
+        debug_print(f"Confluence connection status: {connection_status}", args.debug)
+
+        if "Connected successfully" not in connection_status:
+            debug_print(f"Error connecting to Confluence: {connection_status}", args.debug)
+            return
+
+        try:
+            result = reader.read_confluence_page_by_url(args.confluence)
+            debug_print("Raw result:", args.debug)
+            debug_print(str(result), args.debug)
+            if 'error' in result:
+                debug_print(f"Error: {result['error']}", args.debug)
+            else:
+                print_result(result)
+        except Exception as e:
+            debug_print(f"An unexpected error occurred: {str(e)}", args.debug)
+
+    elif args.github:
         reader = GitHubPRReader()
         if args.github.startswith('http'):
             result = reader.read_pr_by_url(args.github)
@@ -54,12 +81,12 @@ def main():
             debug_print(f"An unexpected error occurred: {e}", args.debug)
 
     elif args.jira:
-        reader = JiraTicketReader()
+        reader = JiraAndConfluenceReader()
         result = reader.read_ticket(args.jira)
         print_result(result)
 
     else:
-        debug_print("Please provide a valid argument. Use --help for more information.", args.debug)
+        debug_print("Please provide a valid argument. Use -h or --help for more information.", args.debug)
 
 def print_result(result):
     print(json.dumps(result, indent=2))
@@ -68,5 +95,8 @@ def debug_print(message, debug_enabled):
     if debug_enabled:
         print(message, file=sys.stderr)
 
-if __name__ == '__main__':
+def run():
     main()
+
+if __name__ == '__main__':
+    run()

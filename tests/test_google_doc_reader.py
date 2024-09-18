@@ -6,6 +6,8 @@ import pytest
 from unittest.mock import patch, MagicMock
 from src.google_doc_reader import GoogleDocReader
 from google.auth.exceptions import MalformedError
+import json  # Add this import
+import pickle
 
 @pytest.fixture
 def mock_credentials():
@@ -20,7 +22,7 @@ def mock_build():
 
 @pytest.fixture
 def mock_open():
-    with patch('builtins.open', create=True) as mock:
+    with patch('builtins.open', new_callable=MagicMock) as mock:
         mock.return_value.__enter__.return_value.read.return_value = '{"type": "service_account"}'
         yield mock
 
@@ -28,6 +30,16 @@ def mock_open():
 def mock_json_load():
     with patch('json.load') as mock:
         mock.return_value = {"type": "service_account"}
+        yield mock
+
+@pytest.fixture
+def mock_pickle_load():
+    with patch('pickle.load') as mock:
+        yield mock
+
+@pytest.fixture
+def mock_pickle_dump():
+    with patch('pickle.dump') as mock:
         yield mock
 
 def test_read_google_doc_success(mock_credentials, mock_build, mock_open, mock_json_load):
@@ -70,30 +82,35 @@ def test_read_google_sheet_success(mock_credentials, mock_build, mock_open, mock
     ]
     assert result == expected_output
 
+def test_initialization_success(mock_credentials, mock_build, mock_open, mock_json_load):
+    mock_json_load.return_value = {"type": "service_account"}
+    reader = GoogleDocReader()
+    assert reader.docs_service is not None
+    assert reader.sheets_service is not None
+
 def test_initialization_failure(mock_credentials, mock_open, mock_json_load):
     mock_credentials.side_effect = MalformedError("Test error")
-
-    with pytest.raises(RuntimeError):
-        GoogleDocReader()
+    reader = GoogleDocReader()
+    assert reader.docs_service is None
+    assert reader.sheets_service is None
 
 def test_read_document_without_initialization(mock_credentials, mock_build, mock_open, mock_json_load):
     mock_credentials.side_effect = MalformedError("Test error")
-
     reader = GoogleDocReader()
     with pytest.raises(RuntimeError, match="Google Docs service is not initialized. Check your credentials."):
         reader.read_document('https://docs.google.com/document/d/abc123/edit')
 
 def test_read_sheet_without_initialization(mock_credentials, mock_build, mock_open, mock_json_load):
     mock_credentials.side_effect = MalformedError("Test error")
-
     reader = GoogleDocReader()
     with pytest.raises(RuntimeError, match="Google Sheets service is not initialized. Check your credentials."):
         reader.read_sheet('https://docs.google.com/spreadsheets/d/abc123/edit')
 
-def test_oauth_flow(mock_credentials, mock_build, mock_open, mock_json_load):
+def test_oauth_flow(mock_credentials, mock_build, mock_open, mock_json_load, mock_pickle_load, mock_pickle_dump):
     with patch('src.google_doc_reader.Flow.from_client_config') as mock_flow:
         mock_flow.return_value.run_local_server.return_value = MagicMock()
         mock_json_load.return_value = {"installed": {"client_id": "test", "client_secret": "test"}}
+        mock_pickle_load.side_effect = pickle.UnpicklingError  # Simulate failed token load
         
         reader = GoogleDocReader()
         assert reader.docs_service is not None
@@ -101,12 +118,12 @@ def test_oauth_flow(mock_credentials, mock_build, mock_open, mock_json_load):
 
 def test_file_not_found(mock_open):
     mock_open.side_effect = FileNotFoundError("File not found")
-
-    with pytest.raises(RuntimeError):
-        GoogleDocReader()
+    reader = GoogleDocReader()
+    assert reader.docs_service is None
+    assert reader.sheets_service is None
 
 def test_json_decode_error(mock_open, mock_json_load):
     mock_json_load.side_effect = json.JSONDecodeError("Invalid JSON", "", 0)
-
-    with pytest.raises(RuntimeError):
-        GoogleDocReader()
+    reader = GoogleDocReader()
+    assert reader.docs_service is None
+    assert reader.sheets_service is None

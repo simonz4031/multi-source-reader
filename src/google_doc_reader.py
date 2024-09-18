@@ -37,17 +37,9 @@ class GoogleDocReader:
 
             self.docs_service = build('docs', 'v1', credentials=credentials)
             self.sheets_service = build('sheets', 'v4', credentials=credentials)
-        except FileNotFoundError as e:
-            print(f"Error: {e}")
-            print("Please ensure you have placed the google-credentials.json file in the current directory or home directory.")
-        except json.JSONDecodeError:
-            print("Error: The google-credentials.json file is not a valid JSON file.")
-        except MalformedError as e:
-            print(f"Error: {e}")
-            print("Your google-credentials.json file is missing required fields.")
-            print("Please check that it contains the correct information for either a Service Account or OAuth 2.0 Client ID.")
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            print(f"An error occurred during initialization: {str(e)}")
+            # Don't raise an exception here, allow the object to be created with uninitialized services
 
     def _find_credentials_file(self):
         # Check current directory
@@ -76,8 +68,12 @@ class GoogleDocReader:
         scopes = ['https://www.googleapis.com/auth/documents.readonly', 'https://www.googleapis.com/auth/spreadsheets.readonly']
         creds = None
         if os.path.exists(token_path):
-            with open(token_path, 'rb') as token:
-                creds = pickle.load(token)
+            try:
+                with open(token_path, 'rb') as token:
+                    creds = pickle.load(token)
+            except (pickle.UnpicklingError, AttributeError):
+                print("Error loading token, proceeding with new authentication.")
+                creds = None
         
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
